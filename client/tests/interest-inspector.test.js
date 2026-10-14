@@ -146,7 +146,7 @@ describe('example article reader integration', () => {
     context.loadReaderRecommendationArticle = id => articleFeedPaginationMethods.loadReaderRecommendationArticle.call(context, id);
     await ArticleFeed.methods.openExampleArticle.call(context, 9);
     expect(api.post).toHaveBeenCalledWith('/articles/details', { articleIds: '9', sort: 'desc' });
-    if (reader) expect(selectArticle).toHaveBeenCalledWith(9, { markPreviousAsRead: false });
+    if (reader) expect(selectArticle).toHaveBeenCalledWith(9, { markAsRead: false });
     else expect(selectArticleByIndex).toHaveBeenCalledWith(0);
     expect(api.put).not.toHaveBeenCalled();
     expect(context.articles[0].status).toBe('unread');
@@ -161,7 +161,7 @@ describe('example article reader integration', () => {
 
   it('does not mark a transient initial Reader selection read', () => {
     const context = { selectedArticleId: 1, $emit: vi.fn(), $nextTick: vi.fn() };
-    ArticleReaderLayout.methods.selectArticle.call(context, 9, { markPreviousAsRead: false });
+    ArticleReaderLayout.methods.selectArticle.call(context, 9, { markAsRead: false });
     expect(context.selectedArticleId).toBe(9); expect(context.$emit).not.toHaveBeenCalled();
     ArticleReaderLayout.methods.selectArticle.call(context, 10);
     expect(context.$emit).toHaveBeenCalledWith('mark-previous-article-read', 9);

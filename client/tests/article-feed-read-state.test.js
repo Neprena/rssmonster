@@ -180,21 +180,27 @@ describe('article feed read-state reconciliation', () => {
     expect(context.overviewStore.increaseReadCount).not.toHaveBeenCalled();
   });
 
-  // Verifies reader navigation pools only a previous unread article.
-  it('marks a previous reader article once and ignores other modes or completed articles', () => {
+  // Verifies Reader navigation marks unread articles read whatever the scroll preference or status.
+  it('marks reader articles read once, independent of status and the scroll preference', async () => {
+    markArticleSeen.mockResolvedValue({ data: { id: 1, status: 'read' } });
     const context = createContext();
+    context.selectionStore.currentSelection.status = 'all';
+    context.selectionStore.currentSelection.markAsReadOnScroll = false;
 
-    context.markReaderPreviousArticleRead(1);
-    expect(context.addToPool).not.toHaveBeenCalled();
+    await context.markReaderArticleRead(1);
+    expect(markArticleSeen).not.toHaveBeenCalled();
 
     context.selectionStore.currentSelection.viewMode = 'reader';
-    context.markReaderPreviousArticleRead('1');
-    context.markReaderPreviousArticleRead(2);
-    context.pool.add(3);
-    context.markReaderPreviousArticleRead(3);
+    await context.markReaderArticleRead('1');
+    await context.markReaderArticleRead(1);
+    await context.markReaderArticleRead(2);
+    context.manualUnreadArticleIds.add(3);
+    await context.markReaderArticleRead(3);
 
-    expect(context.addToPool).toHaveBeenCalledOnce();
-    expect(context.addToPool).toHaveBeenCalledWith(1);
+    expect(markArticleSeen).toHaveBeenCalledOnce();
+    expect(markArticleSeen).toHaveBeenCalledWith('1', expect.objectContaining({ markRead: true }), expect.anything());
+    expect(context.articles.find(article => article.id === 1).status).toBe('read');
+    expect(context.addToPool).not.toHaveBeenCalled();
   });
 
   // Verifies seen responses update every returned article and only reconcile requested counts.

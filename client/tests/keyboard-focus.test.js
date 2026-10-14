@@ -200,6 +200,54 @@ describe('keyboard access and focus', () => {
     wrapper.unmount();
   });
 
+  const pressReaderKey = async key => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    await flushPromises();
+  };
+  const withMorePages = (wrapper, progress = {}) => wrapper.setProps({
+    collectionProgress: { ...wrapper.props('collectionProgress'), hasMore: true, ...progress }
+  });
+
+  it('marks the article opened with the keyboard read, but not the automatic first selection', async () => {
+    const wrapper = mountReaderLayout();
+    await flushPromises();
+    expect(wrapper.emitted('reader-article-opened')).toBeUndefined();
+
+    await pressReaderKey('ArrowDown');
+
+    expect(wrapper.emitted('reader-article-opened')).toEqual([[2]]);
+    expect(wrapper.emitted('load-more')).toBeUndefined();
+    wrapper.unmount();
+  });
+
+  it('requests the next page as keyboard navigation nears the end of the list', async () => {
+    const wrapper = mountReaderLayout();
+    await withMorePages(wrapper);
+
+    await pressReaderKey('ArrowDown');
+
+    expect(wrapper.emitted('load-more')).toHaveLength(1);
+    wrapper.unmount();
+  });
+
+  it('moves to the next article once the requested page arrives', async () => {
+    const wrapper = mountReaderLayout();
+    await withMorePages(wrapper, { isLoading: true });
+    await wrapper.setData({ selectedArticleId: 2 });
+
+    await pressReaderKey('ArrowDown');
+    expect(wrapper.vm.selectedArticleId).toBe(2);
+
+    await wrapper.setProps({
+      articles: [...wrapper.props('articles'), { id: 3, title: 'Third article', status: 'unread', tags: [] }]
+    });
+    await flushPromises();
+
+    expect(wrapper.vm.selectedArticleId).toBe(3);
+    expect(wrapper.emitted('reader-article-opened')).toEqual([[3]]);
+    wrapper.unmount();
+  });
+
   it('moves focus with reader keyboard navigation', async () => {
     const wrapper = mountReaderLayout();
     await wrapper.setData({ selectedArticleId: 1 });

@@ -46,11 +46,16 @@ as read.
 
 ## Reader Mode
 
-Reader mode displays the article list beside the selected article. Moving to a
-different article marks the previously selected unread article as read. This
-lets you work through a collection without manually changing the status of
-each article. Reader selection behavior is independent of the **Mark as read
-while scrolling** preference.
+Reader mode displays the article list beside the selected article. Opening an
+unread article, by clicking it or moving to it with the keyboard, marks it as
+read; the article you leave is marked as read too. This lets you work through a
+collection without manually changing the status of each article. Reader
+selection behavior is independent of the **Mark as read while scrolling**
+preference and of the selected status. An article you mark unread again stays
+unread until the collection changes.
+
+Moving down with the keyboard loads the next page before you reach the end of
+the list, and continues to the next article once it arrives.
 
 Keyboard shortcuts make this workflow faster:
 
@@ -113,7 +118,7 @@ startup selection, and article-link behavior.
 | --- | --- |
 | Include developing coverage | Includes new coverage for Events you have already seen. See [Events]({% link events.md %}#viewing-event-coverage) for grouped coverage and developing articles. |
 | Prioritize trusted feeds in Unread | Gives feeds with higher source trust (FeedTrust) more priority in Unread when sorting by Newest or Oldest. Other ranking modes retain their existing ordering. Leave it off for strictly chronological reading. See [Scoring]({% link scoring.md %}#chronological). |
-| Mark as read while scrolling | Marks unread articles as read after you scroll past them, including in Headlines mode. Reader mode instead marks the article you leave when you change selection, independently of this switch. |
+| Mark as read while scrolling | Marks unread articles as read after you scroll past them, including in Headlines mode. Reader mode instead marks the article you open as read, independently of this switch. |
 | Use default view on startup | Opens the default unread selection after refreshing or reopening RSSMonster. Turn it off to restore the last-used selection instead. |
 | Open article links in a new tab | Opens links within article bodies in a new tab across reading views, keeping RSSMonster open. When off, links follow the publisher's behavior. Article titles always open in a new tab. |
 

@@ -25,8 +25,8 @@ views.
 | `M` or `R` | Toggle the selected article between read and unread. |
 | `S` | Toggle the selected article's saved status. |
 
-In Reader mode, moving to another article marks the previously selected unread
-article as read. See [Marking Articles Read]({% link marking-articles-read.md %}) for the
+In Reader mode, the article you move to is marked as read, and moving down near
+the end of the list loads the next page. See [Marking Articles Read]({% link marking-articles-read.md %}) for the
 full read-state behavior.
 
 ## Global Shortcuts

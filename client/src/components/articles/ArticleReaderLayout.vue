@@ -284,6 +284,7 @@ import { parseSearchHighlightTerms } from '../../services/searchHighlight.js';
 import { READER_TEXT_SIZES, readReaderTextSize, saveReaderTextSize } from '../../services/readerTextSize.js';
 
 const PREVIEW_LENGTH = 150;
+const KEYBOARD_PREFETCH_DISTANCE = 3;
 
 export default {
   components: {
@@ -312,6 +313,7 @@ export default {
     'inspect-interest',
     'reading-article-changing',
     'mark-previous-article-read',
+    'reader-article-opened',
     'shortcut-toggle-read',
     'shortcut-toggle-saved',
     'flush-pool',
@@ -358,7 +360,8 @@ export default {
       recommendations: [],
       recommendationsLoading: false,
       recommendationsError: false,
-      recommendationRequestId: 0
+      recommendationRequestId: 0,
+      advanceAfterNextPage: false
     };
   },
   mounted() {
@@ -554,7 +557,18 @@ export default {
         }
 
         if (!articles.some(article => article.id === this.selectedArticleId)) {
+          // A replaced collection cancels a pending keyboard advance.
+          this.advanceAfterNextPage = false;
           this.selectedArticleId = selectableArticles[0].id;
+        }
+
+        // Down pressed on the last article: continue once the requested page arrives.
+        if (this.advanceAfterNextPage) {
+          const index = selectableArticles.findIndex(article => article.id === this.selectedArticleId);
+          if (index < selectableArticles.length - 1) {
+            this.advanceAfterNextPage = false;
+            this.$nextTick(() => this.selectArticleByIndex(index + 1));
+          }
         }
       }
     },
@@ -670,12 +684,13 @@ export default {
       }
     },
     // Selects the article displayed in the reader panel.
-    selectArticle(articleId, { markPreviousAsRead = true } = {}) {
+    selectArticle(articleId, { markAsRead = true } = {}) {
       if (articleId === this.selectedArticleId) return;
-      if (this.selectedArticleId !== null && markPreviousAsRead) {
+      if (this.selectedArticleId !== null && markAsRead) {
         this.$emit('mark-previous-article-read', this.selectedArticleId);
       }
       this.selectedArticleId = articleId;
+      if (markAsRead) this.$emit('reader-article-opened', articleId);
       this.$nextTick(() => this.resetReaderArticlePanelScroll());
     },
     // Starts each newly selected reader article at the top of its panel.
@@ -699,6 +714,14 @@ export default {
       selectedItem.focus({ preventScroll: true });
       selectedItem.scrollIntoView({ block: 'nearest' });
     },
+    // Keyboard navigation cannot rely on the scroll sentinel, so it asks for the next page itself.
+    requestNextPageNearEnd(targetIndex, articleCount) {
+      if (!this.collectionProgress.hasMore || this.collectionProgress.paginationError) return;
+      this.advanceAfterNextPage = targetIndex >= articleCount;
+      if (targetIndex >= articleCount - KEYBOARD_PREFETCH_DISTANCE && !this.collectionProgress.isLoading) {
+        this.$emit('load-more');
+      }
+    },
     // Handles reader-mode keyboard navigation.
     handleReaderKeydown(event) {
       const command = getArticleKeyboardCommand(event, {
@@ -713,9 +736,11 @@ export default {
 
       if (command === ARTICLE_KEYBOARD_COMMAND.NEXT) {
         event.preventDefault();
+        this.requestNextPageNearEnd(currentIndex + 1, readerListArticles.length);
         this.selectArticleByIndex(Math.min(currentIndex + 1, readerListArticles.length - 1));
       } else if (command === ARTICLE_KEYBOARD_COMMAND.PREVIOUS) {
         event.preventDefault();
+        this.advanceAfterNextPage = false;
         this.selectArticleByIndex(Math.max(currentIndex - 1, 0));
       } else if (command === ARTICLE_KEYBOARD_COMMAND.OPEN) {
         event.preventDefault();

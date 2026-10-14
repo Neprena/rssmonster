@@ -35,8 +35,9 @@ export const articleFeedReadStateMethods = {
     this.isFlushed = false;
   },
 
-  // Marks the previously selected reader article as read before navigating away.
-  markReaderPreviousArticleRead(articleId) {
+  // Marks a Reader article read when it is opened or left, like an explicit Headlines open.
+  // Reader selection is independent of the scroll preference (docs/marking-articles-read.md).
+  async markReaderArticleRead(articleId) {
     if (this.selectionStore.currentSelection.viewMode !== 'reader') return;
 
     const normalizedArticleId = Number(articleId);
@@ -45,7 +46,7 @@ export const articleFeedReadStateMethods = {
     if (!article || article.status === 'read' || this.pool.has(poolArticleId)
       || this.manualUnreadArticleIds.has(poolArticleId)) return;
 
-    this.addToPool(poolArticleId);
+    await this.markHeadlinesArticleRead(articleId);
   },
 
   // Marks the live selection as read, then rebuilds that collection from the database.
