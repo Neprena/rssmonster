@@ -91,7 +91,9 @@ export const parseFeedSourceIsolated = async (source, {
       () => void settle(timeoutError),
       Math.max(1, remainingDeadlineMs(parserDeadlineAt))
     );
-    worker.once('message', result => {
+    worker.on('message', result => {
+      // node --watch also reports the worker's module loads on this channel.
+      if (!('parsedFeed' in result) && !('error' in result)) return;
       void settle(
         result.error ? workerResultError(result.error) : null,
         result.parsedFeed

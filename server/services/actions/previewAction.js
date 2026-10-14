@@ -22,7 +22,10 @@ const matchSample = (expression, articles) => new Promise((resolve, reject) => {
     if (error) reject(error);
     else resolve(result);
   };
-  worker.once('message', result => finish(null, result));
+  worker.on('message', result => {
+    // node --watch also reports the worker's module loads on this channel.
+    if (Array.isArray(result)) finish(null, result);
+  });
   worker.once('error', error => finish(error));
   worker.once('exit', () => finish(new Error('Preview stopped before it finished. Please try again.')));
 });

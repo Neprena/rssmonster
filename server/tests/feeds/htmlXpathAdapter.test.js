@@ -133,4 +133,17 @@ describe('HTML/XPath adapter', () => {
     expect(result.matchedItems).toBe(2);
     expect(result.parsedFeed.entries[0].externalId).toBe('item-1');
   });
+
+  it('parses in a worker while node --watch reports worker imports', async () => {
+    process.env.WATCH_REPORT_DEPENDENCIES = '1';
+    try {
+      const result = await parseHtmlXpathIsolated(HTML, {
+        url: 'https://example.com/news',
+        config: CONFIG
+      });
+      expect(result?.matchedItems).toBe(2);
+    } finally {
+      delete process.env.WATCH_REPORT_DEPENDENCIES;
+    }
+  });
 });

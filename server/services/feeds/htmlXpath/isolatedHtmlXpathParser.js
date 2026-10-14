@@ -63,7 +63,9 @@ export const parseHtmlXpathIsolated = async (source, options = {}, {
       Math.max(1, remainingDeadlineMs(parserDeadlineAt))
     );
 
-    worker.once('message', message => {
+    worker.on('message', message => {
+      // node --watch also reports the worker's module loads on this channel.
+      if (!('result' in message) && !('error' in message)) return;
       void settle(message.error ? workerResultError(message.error) : null, message.result);
     });
     worker.once('error', error => void settle(error));

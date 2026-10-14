@@ -63,4 +63,15 @@ describe('read-only action preview', () => {
     expect(result.body.error).toContain('simpler regular expression');
     expect((await preview(owner.userId, '/Long/i')).body.matched).toBe(1);
   });
+
+  it('matches articles while node --watch reports worker imports', async () => {
+    const owner = await createOwner();
+    await db.Article.create({ ...owner, title: 'Watched article', status: 'unread' });
+    process.env.WATCH_REPORT_DEPENDENCIES = '1';
+    try {
+      expect((await preview(owner.userId, '/Watched/i')).body).toMatchObject({ checked: 1, matched: 1 });
+    } finally {
+      delete process.env.WATCH_REPORT_DEPENDENCIES;
+    }
+  });
 });

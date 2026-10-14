@@ -24,6 +24,18 @@ afterEach(() => {
 });
 
 describe('hard feed execution bounds', () => {
+  it('parses feeds while node --watch reports worker imports', async () => {
+    process.env.WATCH_REPORT_DEPENDENCIES = '1';
+    try {
+      const parsedFeed = await parseFeedSourceIsolated(
+        '<rss version="2.0"><channel><title>Watched</title><item><title>One</title><link>https://example.test/1</link></item></channel></rss>'
+      );
+      expect(parsedFeed?.entries).toHaveLength(1);
+    } finally {
+      delete process.env.WATCH_REPORT_DEPENDENCIES;
+    }
+  });
+
   it('cancels a body read that never produces another chunk', async () => {
     const cancel = vi.fn();
     const response = createHttpResponse({
