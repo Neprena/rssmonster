@@ -249,7 +249,8 @@ const getFeeds = async (
   limit = resolveFeedMaxCount(),
   leaseMs = resolveFeedLeaseMs(),
   excludeIds = [],
-  feedId = null
+  feedId = null,
+  userTriggered = false
 ) => {
   if (feedId) {
     const feed = await claimFeedById({ userId, feedId, leaseMs, now: new Date() });
@@ -261,6 +262,7 @@ const getFeeds = async (
     limit,
     leaseMs,
     excludeIds,
+    userTriggered,
     now: new Date()
   });
 };
@@ -398,6 +400,7 @@ const runCrawl = async (userId = null, options = {}) => {
   const feedLeaseMs = options.feedLeaseMs || resolveFeedLeaseMs();
   const feedTimeoutMs = options.feedTimeoutMs || resolveFeedTimeoutMs();
   const targetFeedId = options.feedId || null;
+  const userTriggered = options.userTriggered === true;
   const maximumFeedCount = targetFeedId ? 1 : resolveFeedMaxCount();
   const crawlStats = options.crawlStats || {
     newArticles: 0,
@@ -412,7 +415,7 @@ const runCrawl = async (userId = null, options = {}) => {
   // Count eligible work before just-in-time claims make the selected list grow.
   const plannedTotalFeeds = !targetFeedId && typeof options.onProgress === 'function'
     ? Math.min(maximumFeedCount, await Feed.count({
-      where: buildDueFeedWhere({ userId, now: crawlStartedAt })
+      where: buildDueFeedWhere({ userId, now: crawlStartedAt, userTriggered })
     }))
     : 0;
   const emitProgress = (event) => {
@@ -447,7 +450,7 @@ const runCrawl = async (userId = null, options = {}) => {
       parallelConcurrency
     );
     try {
-      feeds.push(...await getFeeds(userId, 1, feedLeaseMs, [], targetFeedId));
+      feeds.push(...await getFeeds(userId, 1, feedLeaseMs, [], targetFeedId, userTriggered));
     } catch (error) {
       initialSequentialSlotRelease();
       initialSequentialSlotRelease = null;
@@ -1356,7 +1359,8 @@ const runCrawl = async (userId = null, options = {}) => {
             1,
             feedLeaseMs,
             feeds.map(claimedFeed => claimedFeed.id),
-            targetFeedId
+            targetFeedId,
+            userTriggered
           );
           if (!feed) {
             noFeedsRemaining = true;
@@ -1415,7 +1419,8 @@ const runCrawl = async (userId = null, options = {}) => {
             1,
             feedLeaseMs,
             feeds.map(claimedFeed => claimedFeed.id),
-            targetFeedId
+            targetFeedId,
+            userTriggered
           );
           if (!nextFeed) break;
           feeds.push(nextFeed);

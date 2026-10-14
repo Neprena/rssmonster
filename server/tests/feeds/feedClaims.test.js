@@ -244,4 +244,44 @@ describe('atomic due-feed claims', () => {
     expect(feed.nextFetchAt).toBeNull();
     expect(feed.leaseOwner).toBeNull();
   });
+
+  it('lets a user-triggered crawl claim healthy feeds before their schedule', async () => {
+    const scheduled = await createFeed('scheduled-healthy', {
+      nextFetchAt: new Date(NOW.getTime() + 30 * 60 * 1000),
+      lastFetchOutcome: 'unchanged',
+      lastAttemptAt: new Date(NOW.getTime() - 10 * 60 * 1000)
+    });
+    const neverFetched = await createFeed('scheduled-new', {
+      nextFetchAt: new Date(NOW.getTime() + 30 * 60 * 1000)
+    });
+    const manualOnly = await createFeed('manual-only', {
+      updateIntervalMinutes: 0,
+      nextFetchAt: null,
+      lastFetchOutcome: 'changed'
+    });
+
+    expect(await claimDueFeeds({ userId: user.id, now: NOW })).toEqual([]);
+    const claimed = await claimDueFeeds({ userId: user.id, now: NOW, userTriggered: true });
+
+    expect(claimed.map(feed => feed.id).sort()).toEqual([scheduled.id, neverFetched.id, manualOnly.id].sort());
+  });
+
+  it('keeps failure backoff, publisher limits and recent attempts for user-triggered crawls', async () => {
+    const later = new Date(NOW.getTime() + 30 * 60 * 1000);
+    await createFeed('backing-off', { nextFetchAt: later, lastFetchOutcome: 'transient_failure' });
+    await createFeed('rate-limited', { nextFetchAt: later, lastFetchOutcome: 'rate_limited' });
+    await createFeed('just-fetched', {
+      nextFetchAt: later,
+      lastFetchOutcome: 'changed',
+      lastAttemptAt: new Date(NOW.getTime() - 10 * 1000)
+    });
+    await createFeed('quarantined', { nextFetchAt: null, status: 'error', lastFetchOutcome: 'malformed' });
+    await createFeed('muted', {
+      nextFetchAt: later,
+      lastFetchOutcome: 'changed',
+      mutedUntil: new Date(NOW.getTime() + 60 * 60 * 1000)
+    });
+
+    expect(await claimDueFeeds({ userId: user.id, now: NOW, userTriggered: true })).toEqual([]);
+  });
 });

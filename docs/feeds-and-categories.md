@@ -219,6 +219,10 @@ before proceeding and use [backups]({% link backup-restore.md %}) for recovery.
 ## Refresh and diagnose
 
 **Fetch new articles** requests publisher fetching and displays crawl progress.
+It fetches healthy feeds ahead of their schedule, including feeds set to manual
+refresh only, but skips feeds attempted in the last minute. Feeds that are
+backing off after failures, honoring a publisher's Retry-After, muted, or stopped
+keep their schedule; use **Retry feed** for those.
 Refreshing an article collection, including mobile pull-to-refresh, reloads stored
 results and is a different operation.
 

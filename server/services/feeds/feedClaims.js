@@ -23,12 +23,47 @@ const isClaimDeadlock = error => [
   error?.code
 ].includes('ER_LOCK_DEADLOCK') || /deadlock/i.test(error?.message || '');
 
+const HEALTHY_FETCH_OUTCOMES = ['changed', 'unchanged', 'not_modified'];
+export const USER_TRIGGERED_COOLDOWN_MS = 60 * 1000;
+
+// Fetch new articles may run ahead of schedule for healthy and manual-only feeds,
+// while failure backoff, publisher Retry-After limits and quarantine still apply.
+const buildScheduleWhere = ({ now, userTriggered }) => {
+  if (!userTriggered) return { nextFetchAt: { [Op.lte]: now } };
+
+  const notRecentlyAttempted = {
+    [Op.or]: [
+      { lastAttemptAt: { [Op.is]: null } },
+      { lastAttemptAt: { [Op.lte]: new Date(now.getTime() - USER_TRIGGERED_COOLDOWN_MS) } }
+    ]
+  };
+  return {
+    [Op.or]: [
+      { nextFetchAt: { [Op.lte]: now } },
+      {
+        [Op.and]: [
+          { nextFetchAt: { [Op.ne]: null } },
+          {
+            [Op.or]: [
+              { lastFetchOutcome: { [Op.is]: null } },
+              { lastFetchOutcome: HEALTHY_FETCH_OUTCOMES }
+            ]
+          },
+          notRecentlyAttempted
+        ]
+      },
+      // ponytail: manual-only feeds only get the cooldown, not failure backoff.
+      { [Op.and]: [{ updateIntervalMinutes: 0 }, notRecentlyAttempted] }
+    ]
+  };
+};
+
 // Builds the indexed eligibility predicate shared by all crawl triggers.
-export const buildDueFeedWhere = ({ userId = null, now, excludeIds = [] }) => ({
+export const buildDueFeedWhere = ({ userId = null, now, excludeIds = [], userTriggered = false }) => ({
   status: 'active',
-  nextFetchAt: { [Op.lte]: now },
   ...(excludeIds.length > 0 ? { id: { [Op.notIn]: excludeIds } } : {}),
   [Op.and]: [
+    buildScheduleWhere({ now, userTriggered }),
     {
       [Op.or]: [
         { leaseUntil: { [Op.is]: null } },
@@ -52,7 +87,8 @@ export const claimDueFeeds = async ({
   now = new Date(),
   leaseMs = DEFAULT_FEED_LEASE_MS,
   leaseOwner = randomUUID(),
-  excludeIds = []
+  excludeIds = [],
+  userTriggered = false
 } = {}) => {
   const boundedLimit = positiveInteger(limit, 10);
   const boundedLeaseMs = positiveInteger(leaseMs, DEFAULT_FEED_LEASE_MS);
@@ -64,7 +100,7 @@ export const claimDueFeeds = async ({
         isolationLevel: Sequelize.Transaction.ISOLATION_LEVELS.READ_COMMITTED
       }, async transaction => {
         const feeds = await Feed.findAll({
-          where: buildDueFeedWhere({ userId, now, excludeIds }),
+          where: buildDueFeedWhere({ userId, now, excludeIds, userTriggered }),
           order: [['nextFetchAt', 'ASC'], ['id', 'ASC']],
           limit: boundedLimit,
           transaction,
