@@ -347,7 +347,7 @@ describe('ArticleFeed loading races', () => {
       status: 'unread', sort: 'recommended', grouping: 'event', search: 'science'
     } });
     fetchArticleIds.mockResolvedValue({ data: {
-      itemIds: [], firstPage: [], snapshot: { snapshotMaxArticleId: 999, highestUnreadArticleId: 100 }
+      itemIds: [100], firstPage: [{ id: 100, status: 'unread' }], snapshot: { snapshotMaxArticleId: 999, highestUnreadArticleId: 100 }
     } });
     await ArticleFeed.methods.fetchArticleIds.call(context, context.selectionStore.currentSelection);
     fetchNewerArticleCount.mockResolvedValue({ data: { newerArticleCount: 2 } });

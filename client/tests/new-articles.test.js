@@ -43,6 +43,19 @@ beforeEach(() => {
 afterEach(() => { wrapper?.unmount(); vi.unstubAllGlobals(); vi.useRealTimers(); });
 
 describe('new unread articles', () => {
+  it.each(['unread', 'all'])('loads arrivals into an empty %s list without a full page reload', async status => {
+    fetchArticleIds.mockResolvedValueOnce(result([]));
+    await mountFeed({ status, search: null });
+    expect(wrapper.text()).not.toContain('Article 201');
+
+    fetchArticleIds.mockResolvedValue(result([201, 202]));
+    stores.overviewStore.articleAvailabilityRevision += 1;
+    await flushPromises();
+
+    expect(wrapper.text()).toContain('Article 201');
+    expect(wrapper.text()).toContain('Article 202');
+  });
+
   it('keeps Headlines banner actions and dynamic counts working', async () => {
     wrapper = shallowMount(NewArticlesBanner, { props: { count: 3, headlineMode: true } });
 

@@ -414,6 +414,12 @@ export const articleFeedPaginationMethods = {
   async checkForNewerArticles() {
     if (this.offlineReadingStore?.readOnly) return false;
     if (this.isLoading) return false;
+    // An empty list has no reading position to protect, so arrivals load directly.
+    if (this.hasLoadedContent && this.articles.length === 0) {
+      return this.refreshArticleIds(this.loadedSelection || this.selectionStore.currentSelection, {
+        newOnly: this.showingNewOnly
+      }).catch(() => false);
+    }
     const requestId = ++this.activeNewerArticlesRequestId;
     const collectionRequestId = this.activeRequestId;
     const selection = withArticleDateFilters(this.selectionStore.currentSelection, this.selectionStore);
